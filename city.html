@@ -198,12 +198,14 @@ function ago(iso) {
 // Filters are remembered in this browser only.
 function savePrefs() {
   try {
-    localStorage.setItem("fieldFinder", JSON.stringify({
+    localStorage.setItem(prefsKey(), JSON.stringify({
       type: $("type").value, park: $("park").value, from: $("from").value, to: $("to").value,
       minLen: $("minLen").value, onlyOpen: $("onlyOpen").checked, view: state.view }));
   } catch (e) {}
 }
-function loadPrefs() { try { return JSON.parse(localStorage.getItem("fieldFinder")) || {}; } catch (e) { return {}; } }
+// Each city keeps its own filters, so a park picked in one city doesn't blank out another.
+function prefsKey() { return "fieldFinder:" + (new URLSearchParams(location.search).get("c") || "menlo-park"); }
+function loadPrefs() { try { return JSON.parse(localStorage.getItem(prefsKey())) || {}; } catch (e) { return {}; } }
 
 // Open [start,end) minute ranges for a field on a date, or null if the date isn't bookable online.
 function rangesFor(f, date) {
@@ -327,9 +329,12 @@ function applySnapshot(snap) {
     for (const t of types) $("type").add(new Option(t + "s", t));
     $("type").value = p.type !== undefined && (p.type === "" || types.includes(p.type)) ? p.type : (types.includes("Athletic Field") ? "Athletic Field" : "");
     for (const pk of [...new Set(state.facilities.map((f) => f.park))].sort()) $("park").add(new Option(pk, pk));
-    if (p.park) $("park").value = p.park;
+    if (p.park && [...$("park").options].some((o) => o.value === p.park)) $("park").value = p.park;
+    // Open on the first day from today that has an opening, so lead-time rules don't make it look empty.
     let start = today();
     if (state.dates.length && (start < state.dates[0] || start > state.dates.at(-1))) start = state.dates[0];
+    const firstOpen = state.dates.find((d) => d >= start && state.facilities.some((f) => (rangesFor(f, d) || []).length));
+    if (firstOpen) start = firstOpen;
     $("date").value = start;
     state.view = p.view === "week" ? "week" : "day";
     $("vDay").classList.toggle("on", state.view === "day");
