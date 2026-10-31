@@ -40,7 +40,9 @@
     background-image: linear-gradient(45deg, transparent 50%, var(--label2) 50%), linear-gradient(135deg, var(--label2) 50%, transparent 50%);
     background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat;
   }
-  input[type="date"] { padding-right: 11px; background-image: none; font-variant-numeric: tabular-nums; }
+  input[type="date"] { padding-right: 11px; background-image: none; font-variant-numeric: tabular-nums; min-width: 9.5em; display: inline-flex; align-items: center; line-height: 20px; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 20px; }
+  input[type="date"]::-webkit-datetime-edit { padding: 0; }
   .icon-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--fill); color: var(--blue); font-size: 20px; line-height: 1; cursor: pointer; }
   .icon-btn:active { background: var(--fill2); }
   :focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 1px; }
@@ -100,7 +102,16 @@
     th.name, td.name { min-width: 140px; max-width: 160px; padding: 10px 12px; }
     td.name a { font-size: 14px; }
     .updated { margin-left: 0; }
+    .daycell { min-width: 0; padding: 12px 3px; }
+    .daycell .txt { display: none; }
+    .bar { height: 8px; border-radius: 4px; }
+    th.dayhead { padding: 8px 2px; text-align: center; line-height: 1.25; }
+    th.dayhead .dl { display: none; }
+    th.dayhead span.ds { display: inline; }
+    .week th.name, .week td.name { min-width: 112px; max-width: 120px; }
+    .week td.name a { font-size: 13px; }
   }
+  th.dayhead .ds { display: none; }
 </style>
 
 </head>
@@ -168,6 +179,10 @@ function dayLabel(s, long) {
   return new Date(s + "T12:00:00Z").toLocaleDateString(undefined, long
     ? { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }
     : { weekday: "short", month: "numeric", day: "numeric", timeZone: "UTC" });
+}
+function shortDay(s) {
+  const d = new Date(s + "T12:00:00Z");
+  return d.toLocaleDateString(undefined, { weekday: "narrow", timeZone: "UTC" }) + "<br>" + d.getUTCDate();
 }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function ago(iso) {
@@ -242,7 +257,7 @@ function renderWeek(date) {
   const list = visibleFacilities(dates);
   const from = +$("from").value, to = +$("to").value, span = Math.max(to - from, 1);
   const head = `<thead><tr><th class="name">Field</th>` + dates.map((d) =>
-    `<th class="dayhead ${d === date ? "sel" : ""}" data-date="${d}">${dayLabel(d)}</th>`).join("") + `</tr></thead>`;
+    `<th class="dayhead ${d === date ? "sel" : ""}" data-date="${d}"><span class="dl">${dayLabel(d)}</span><span class="ds">${shortDay(d)}</span></th>`).join("") + `</tr></thead>`;
   const body = groupRows(list, 7, (f) => dates.map((d) => {
     const r = rangesFor(f, d);
     if (!r) return `<td class="daycell" data-date="${d}"><div class="bar none"></div><div class="txt">Not online</div></td>`;
@@ -275,6 +290,7 @@ function render() {
     $("grid").innerHTML = emptyRow(`No data for ${dayLabel(date, true)}. Pick a date between ${dayLabel(state.dates[0], true)} and ${dayLabel(state.dates.at(-1), true)}.`);
     return;
   }
+  $("grid").classList.toggle("week", state.view === "week");
   if (state.view === "day") renderDay(date); else renderWeek(date);
 }
 
