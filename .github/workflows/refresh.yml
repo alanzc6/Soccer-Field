@@ -1,0 +1,35 @@
+name: Refresh field data
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # every 3 hours (times are UTC)
+  push:
+    paths:
+      - cities.json           # a newly added city gets data right away
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch open times from each city's booking site
+        run: python3 scrape.py
+      - name: Save if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "Refresh field data"
+          git pull --rebase
+          git push
