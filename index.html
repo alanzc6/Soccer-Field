@@ -3,369 +3,197 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Menlo Park Field Finder</title>
+<title>Field Finder</title>
 <style>
-  /* Layout: white, light-only iOS-style page. A large title, one inset card of filters, then a schedule card (fields as rows, time as columns). */
+  /* Layout: white iOS-style home. Large title, a list of city cards, then an "Add a city" card. */
   :root {
     --bg: #ffffff; --card: #ffffff; --label: #000000; --label2: rgba(60, 60, 67, 0.6); --label3: rgba(60, 60, 67, 0.3);
     --sep: rgba(60, 60, 67, 0.16); --fill: rgba(118, 118, 128, 0.12); --fill2: rgba(118, 118, 128, 0.2);
-    --green: #34c759; --blue: #007aff; --orange: #ff9500; --busy: #efeff2; --none: #f7f7f9; --thumb: #ffffff;
+    --blue: #007aff; --closed: #48484a; --red: #ff3b30;
     --shadow: 0 0 0 0.5px rgba(60, 60, 67, 0.18), 0 2px 10px rgba(0, 0, 0, 0.04);
-    --closed: #48484a;
-    color-scheme: light;
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
     --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0;
-    background: var(--bg); color: var(--label); font: 15px/1.38 var(--font); -webkit-font-smoothing: antialiased;
+    margin: 0; background: var(--bg); color: var(--label); font: 15px/1.38 var(--font); -webkit-font-smoothing: antialiased;
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 28px 40px;
+    padding-block: 28px 48px;
   }
-  .page { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-  header h1 { margin: 0; font: 700 34px/1.1 var(--font-display); letter-spacing: -0.022em; text-wrap: balance; }
+  .page { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  header h1 { margin: 0; font: 700 34px/1.1 var(--font-display); letter-spacing: -0.022em; }
   header p { margin: 6px 0 0; color: var(--label2); font-size: 17px; letter-spacing: -0.01em; }
+  h2 { margin: 0 0 8px 16px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label2); }
+  .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
 
-  .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
-  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; padding: 14px 16px; }
+  .city { display: flex; align-items: center; gap: 14px; padding: 14px 16px; color: inherit; text-decoration: none; border-bottom: 0.5px solid var(--sep); }
+  .city:last-child { border-bottom: 0; }
+  .city:hover { background: var(--fill); }
+  .city:active { background: var(--fill2); }
+  .badge { flex: none; width: 44px; height: 44px; border-radius: 11px; background: var(--blue); color: #ffffff; display: grid; place-items: center; font: 600 17px var(--font-display); letter-spacing: -0.01em; }
+  .city .info { flex: 1; min-width: 0; }
+  .city .name { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .city .sub { font-size: 14px; color: var(--label2); margin-top: 1px; }
+  .city .chev { color: var(--label3); font-size: 22px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--label2); }
+
+  form { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+  form p { margin: 0; color: var(--label2); font-size: 14px; }
   .ctl { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--label2); }
-  .row { display: flex; gap: 6px; align-items: center; }
-  input, select, button { font: 400 15px var(--font); color: var(--label); }
-  select, input[type="date"] {
-    appearance: none; -webkit-appearance: none; border: 0; border-radius: 9px; background-color: var(--fill);
-    padding: 7px 30px 7px 11px; min-height: 34px;
-    background-image: linear-gradient(45deg, transparent 50%, var(--label2) 50%), linear-gradient(135deg, var(--label2) 50%, transparent 50%);
-    background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat;
-  }
-  input[type="date"] { padding-right: 11px; background-image: none; font-variant-numeric: tabular-nums; min-width: 9.5em; display: inline-flex; align-items: center; line-height: 20px; }
-  input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 20px; }
-  input[type="date"]::-webkit-datetime-edit { padding: 0; }
-  .icon-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--fill); color: var(--blue); font-size: 20px; line-height: 1; cursor: pointer; }
-  .icon-btn:active { background: var(--fill2); }
+  .row2 { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
+  input { font: 400 16px var(--font); color: var(--label); border: 0; border-radius: 9px; background: var(--fill); padding: 9px 11px; min-height: 38px; width: 100%; min-width: 0; }
   :focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 1px; }
-
-  .seg { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--fill); }
-  .seg button { border: 0; background: transparent; border-radius: 7px; padding: 5px 18px; min-height: 30px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
-  .seg button.on { background: var(--thumb); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04); font-weight: 600; }
-
-  .toggle { flex-direction: row; align-items: center; gap: 10px; color: var(--label); font-size: 15px; min-height: 34px; cursor: pointer; }
-  .toggle input { appearance: none; -webkit-appearance: none; margin: 0; width: 51px; height: 31px; border-radius: 16px; background: var(--fill2); position: relative; cursor: pointer; transition: background 0.2s; flex: none; }
-  .toggle input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #ffffff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16); transition: transform 0.2s; }
-  .toggle input:checked { background: var(--blue); }
-  .toggle input:checked::after { transform: translateX(20px); }
-
-  .note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; font-size: 14px; color: var(--label); }
-  .note[hidden] { display: none; }
-  .note::before { content: "!"; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--orange); color: #ffffff; font-weight: 700; font-size: 13px; display: grid; place-items: center; }
-  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 13px; color: var(--label2); padding: 0 4px; }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
-  .dot.free { background: var(--blue); }
-  .dot.busy { background: var(--closed); }
-  .dot.none, .slot.none, .bar.none { background: repeating-linear-gradient(45deg, var(--none), var(--none) 3px, var(--busy) 3px, var(--busy) 6px); }
-  .slot.none { background-clip: content-box; }
-  .updated { margin-left: auto; font-variant-numeric: tabular-nums; }
-
-  .board { overflow: auto; max-height: 76vh; min-width: 0; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { padding: 0; }
-  thead th { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--card) 88%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); font-weight: 500; color: var(--label2); font-size: 12px; text-align: left; border-bottom: 0.5px solid var(--sep); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  th.name, td.name { position: sticky; left: 0; background: var(--card); z-index: 1; min-width: 230px; max-width: 290px; padding: 10px 16px; text-align: left; }
-  thead th.name { z-index: 3; color: var(--label); font: 600 17px var(--font-display); letter-spacing: -0.01em; background: var(--card); }
-  td.name a { color: var(--label); text-decoration: none; display: block; font-size: 15px; letter-spacing: -0.01em; }
-  td.name a::after { content: " ›"; color: var(--label3); }
-  td.name a:hover { color: var(--blue); }
-  tr.park td { padding: 18px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label2); background: var(--card); }
-  tr.park td span { position: sticky; left: 16px; }
-  tr.field td { border-bottom: 0.5px solid var(--sep); }
-  tr.field:last-child td { border-bottom: 0; }
-  .slot { width: 22px; min-width: 22px; height: 44px; padding: 11px 0; background-clip: content-box; border-left: 1px solid var(--card); }
-  .slot.hour { border-left: 1px solid var(--card); }
-  .slot.free { background-color: var(--blue); }
-  .slot.busy { background-color: var(--closed); }
-  thead th.tick { padding: 10px 0 10px 2px; }
-  .daycell { min-width: 128px; padding: 10px 10px; cursor: pointer; }
-  .daycell:hover { background: var(--fill); }
-  .bar { position: relative; height: 10px; border-radius: 5px; background: var(--closed); overflow: hidden; }
-  .bar span { position: absolute; top: 0; bottom: 0; background: var(--blue); }
-  .daycell .txt { font-size: 12px; color: var(--label2); margin-top: 5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  th.dayhead { padding: 10px; cursor: pointer; }
-  th.dayhead.sel { color: var(--blue); font-weight: 600; }
-  .empty { padding: 44px 20px; text-align: center; color: var(--label2); }
+  button { font: 600 16px var(--font); border: 0; border-radius: 11px; padding: 11px 18px; cursor: pointer; }
+  .primary { background: var(--blue); color: #ffffff; align-self: flex-start; }
+  .secondary { background: var(--fill); color: var(--blue); }
+  .error { color: var(--red); font-size: 14px; }
+  .result { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+  .result ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  pre { margin: 0; padding: 12px; border-radius: 10px; background: var(--fill); font: 13px/1.45 var(--mono); overflow-x: auto; white-space: pre; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .actions a { color: var(--blue); text-decoration: none; font-weight: 600; padding: 11px 0; }
   footer { font-size: 13px; color: var(--label2); padding: 0 4px; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  @media (max-width: 600px) {
+  @media (max-width: 480px) {
     header h1 { font-size: 30px; }
-    header p { font-size: 15px; }
-    th.name, td.name { min-width: 140px; max-width: 160px; padding: 10px 12px; }
-    td.name a { font-size: 14px; }
-    .updated { margin-left: 0; }
-    .daycell { min-width: 0; padding: 12px 3px; }
-    .daycell .txt { display: none; }
-    .bar { height: 8px; border-radius: 4px; }
-    th.dayhead { padding: 8px 2px; text-align: center; line-height: 1.25; }
-    th.dayhead .dl { display: none; }
-    th.dayhead span.ds { display: inline; }
-    .week th.name, .week td.name { min-width: 112px; max-width: 120px; }
-    .week td.name a { font-size: 13px; }
+    .row2 { grid-template-columns: 1fr 84px; }
   }
-  th.dayhead .ds { display: none; }
 </style>
-
 </head>
 <body>
 <div class="page">
   <header>
     <h1>Field Finder</h1>
-    <p>Open times at City of Menlo Park athletic fields for the next 8 weeks.</p>
+    <p>See open times at city athletic fields. Pick a city to get started.</p>
   </header>
 
-  <div class="card controls">
-    <label class="ctl" for="date">Date
-      <span class="row">
-        <button class="icon-btn" id="prev" aria-label="Back">‹</button>
-        <input type="date" id="date">
-        <button class="icon-btn" id="next" aria-label="Forward">›</button>
-      </span>
-    </label>
-    <div class="ctl">View
-      <span class="seg"><button id="vDay" class="on">Day</button><button id="vWeek">Week</button></span>
-    </div>
-    <label class="ctl" for="type">Type <select id="type"></select></label>
-    <label class="ctl" for="park">Park <select id="park"><option value="">All parks</option></select></label>
-    <label class="ctl" for="from">Open between
-      <span class="row"><select id="from"></select><span>to</span><select id="to"></select></span>
-    </label>
-    <label class="ctl" for="minLen">For at least
-      <select id="minLen">
-        <option value="0">Any amount</option>
-        <option value="60" selected>1 hour</option>
-        <option value="90">1.5 hours</option>
-        <option value="120">2 hours</option>
-        <option value="180">3 hours</option>
-      </select>
-    </label>
-    <label class="ctl toggle" for="onlyOpen"><input type="checkbox" id="onlyOpen" checked role="switch"> Only fields with an opening</label>
-  </div>
+  <section>
+    <h2>Cities</h2>
+    <div class="card" id="cities"><div class="empty">Loading cities…</div></div>
+  </section>
 
-  <div class="card note" id="note" hidden></div>
-  <div class="meta">
-    <span><span class="dot free"></span>Open</span>
-    <span><span class="dot busy"></span>Booked or closed</span>
-    <span><span class="dot none"></span>Not bookable online</span>
-    <span>Tap a field to book it on the city site.</span>
-    <span class="updated" id="updated"></span>
-  </div>
-  <div class="card board"><table id="grid"><tbody><tr><td class="empty">Loading open times…</td></tr></tbody></table></div>
-  <footer>Data comes from the city's booking site and refreshes every few hours. Confirm on the booking page before you go.</footer>
+  <section>
+    <h2>Add a city</h2>
+    <div class="card">
+      <form id="addForm" novalidate>
+        <p>Works with cities that book fields through PerfectMind (their booking pages are on a <b>perfectmind.com</b> address). Open the city's field rental list and copy the link from your browser.</p>
+        <div class="row2">
+          <label class="ctl" for="cName">City name <input id="cName" placeholder="Palo Alto" autocomplete="off"></label>
+          <label class="ctl" for="cState">State <input id="cState" placeholder="CA" maxlength="2" autocomplete="off"></label>
+        </div>
+        <label class="ctl" for="cLink">Booking link
+          <input id="cLink" inputmode="url" placeholder="https://….perfectmind.com/…/BookMe4FacilityList/List?widgetId=…&amp;calendarId=…" autocomplete="off">
+        </label>
+        <div class="error" id="formError" hidden></div>
+        <button class="primary" type="submit">Get the code to add it</button>
+      </form>
+      <div class="result" id="result" hidden>
+        <ol>
+          <li>Copy the code below.</li>
+          <li>Open <b>cities.json</b> on GitHub and click the pencil to edit.</li>
+          <li>Before the last <code>]</code>, type a comma after the final <code>}</code>, then paste the code. Click <b>Commit changes</b>.</li>
+          <li>Wait about two minutes. The city's open times load automatically, then it shows up in the list above.</li>
+        </ol>
+        <pre id="snippet"></pre>
+        <div class="actions">
+          <button class="secondary" id="copyBtn" type="button">Copy code</button>
+          <a id="editLink" href="#" target="_blank" rel="noopener">Open cities.json on GitHub ›</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Open times come from each city's booking site and refresh every few hours. Confirm on the city's booking page before you go.</footer>
 </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const DAY_START = 6 * 60, DAY_END = 23 * 60, STEP = 30;
-const state = { facilities: [], avail: {}, dates: [], view: "day", snap: null };
-
-function fmtTime(m) {
-  const h = Math.floor(m / 60) % 24, mm = m % 60;
-  const ap = h < 12 ? "am" : "pm", hh = ((h + 11) % 12) + 1;
-  return mm ? `${hh}:${String(mm).padStart(2, "0")}${ap}` : `${hh}${ap}`;
-}
-function ymd(d) { return d.toISOString().slice(0, 10); }
-function addDays(s, n) { const d = new Date(s + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return ymd(d); }
-function today() { const d = new Date(); return ymd(new Date(d.getTime() - d.getTimezoneOffset() * 60000)); }
-function dayLabel(s, long) {
-  return new Date(s + "T12:00:00Z").toLocaleDateString(undefined, long
-    ? { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }
-    : { weekday: "short", month: "numeric", day: "numeric", timeZone: "UTC" });
-}
-function shortDay(s) {
-  const d = new Date(s + "T12:00:00Z");
-  return d.toLocaleDateString(undefined, { weekday: "narrow", timeZone: "UTC" }) + "<br>" + d.getUTCDate();
-}
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function slug(s) { return s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join(""); }
 function ago(iso) {
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);
   if (mins < 2) return "just now";
-  if (mins < 60) return `${mins} minutes ago`;
+  if (mins < 60) return `${mins} min ago`;
   const h = Math.round(mins / 60);
-  return h < 24 ? `${h} hour${h > 1 ? "s" : ""} ago` : new Date(iso).toLocaleString();
+  return h < 24 ? `${h} hr ago` : new Date(iso).toLocaleDateString();
 }
 
-// Filters are remembered in this browser only.
-function savePrefs() {
+// The GitHub repo behind this Pages site: <user>.github.io/<repo>/ -> github.com/<user>/<repo>
+function repoUrl() {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  if (!m) return null;
+  const repo = location.pathname.split("/").filter(Boolean)[0];
+  return repo ? `https://github.com/${m[1]}/${repo}` : `https://github.com/${m[1]}/${m[1]}.github.io`;
+}
+
+async function loadCities() {
+  let cities;
   try {
-    localStorage.setItem("fieldFinder", JSON.stringify({
-      type: $("type").value, park: $("park").value, from: $("from").value, to: $("to").value,
-      minLen: $("minLen").value, onlyOpen: $("onlyOpen").checked, view: state.view }));
-  } catch (e) {}
-}
-function loadPrefs() { try { return JSON.parse(localStorage.getItem("fieldFinder")) || {}; } catch (e) { return {}; } }
-
-// Open [start,end) minute ranges for a field on a date, or null if the date isn't bookable online.
-function rangesFor(f, date) {
-  const days = state.avail[f.id];
-  return days && date in days ? days[date] : null;
-}
-
-function matches(ranges) {
-  const from = +$("from").value, to = +$("to").value, min = +$("minLen").value;
-  return !!ranges && ranges.some(([s, e]) => Math.min(e, to) - Math.max(s, from) >= Math.max(min, 1));
-}
-
-function visibleFacilities(dates) {
-  const type = $("type").value, park = $("park").value, only = $("onlyOpen").checked;
-  return state.facilities.filter((f) =>
-    (!type || f.type === type) && (!park || f.park === park) &&
-    (!only || dates.some((d) => matches(rangesFor(f, d)))));
-}
-
-function groupRows(list, cols, rowFn) {
-  let html = "", park = null;
-  for (const f of list) {
-    if (f.park !== park) { park = f.park; html += `<tr class="park"><td colspan="${cols + 1}"><span>${esc(park)}</span></td></tr>`; }
-    const short = f.name.replace(/^.*?–\s*/, "");
-    html += `<tr class="field"><td class="name"><a href="${esc(f.bookingUrl)}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(short)}</a></td>${rowFn(f)}</tr>`;
-  }
-  return html;
-}
-
-function emptyRow(msg) { return `<tbody><tr><td class="empty">${msg}</td></tr></tbody>`; }
-
-function renderDay(date) {
-  const list = visibleFacilities([date]);
-  const ticks = [];
-  for (let m = DAY_START; m < DAY_END; m += STEP) ticks.push(m);
-  const head = `<thead><tr><th class="name">${dayLabel(date, true)}</th>` +
-    ticks.map((m) => m % 60 ? `<th></th>` : `<th class="tick">${fmtTime(m)}</th>`).join("") + `</tr></thead>`;
-  const body = groupRows(list, ticks.length, (f) => {
-    const r = rangesFor(f, date);
-    return ticks.map((m) => {
-      const cls = m % 60 ? "slot" : "slot hour";
-      if (!r) return `<td class="${cls} none" title="Not bookable online for this date"></td>`;
-      const free = r.some(([s, e]) => s <= m && m + STEP <= e);
-      return `<td class="${cls} ${free ? "free" : "busy"}" title="${fmtTime(m)}–${fmtTime(m + STEP)}: ${free ? "open" : "booked or closed"}"></td>`;
-    }).join("");
-  });
-  $("grid").innerHTML = list.length ? head + `<tbody>${body}</tbody>` : emptyRow(`No fields match these filters on ${dayLabel(date, true)}. Try a wider time range or a shorter length.`);
-}
-
-function renderWeek(date) {
-  const first = state.dates[0], weekStart = addDays(first, Math.floor((Date.parse(date) - Date.parse(first)) / 864e5 / 7) * 7);
-  const dates = [...Array(7)].map((_, i) => addDays(weekStart, i));
-  const list = visibleFacilities(dates);
-  const from = +$("from").value, to = +$("to").value, span = Math.max(to - from, 1);
-  const head = `<thead><tr><th class="name">Field</th>` + dates.map((d) =>
-    `<th class="dayhead ${d === date ? "sel" : ""}" data-date="${d}"><span class="dl">${dayLabel(d)}</span><span class="ds">${shortDay(d)}</span></th>`).join("") + `</tr></thead>`;
-  const body = groupRows(list, 7, (f) => dates.map((d) => {
-    const r = rangesFor(f, d);
-    if (!r) return `<td class="daycell" data-date="${d}"><div class="bar none"></div><div class="txt">Not online</div></td>`;
-    const clipped = r.map(([s, e]) => [Math.max(s, from), Math.min(e, to)]).filter(([s, e]) => e > s);
-    const bars = clipped.map(([s, e]) => `<span style="left:${(s - from) / span * 100}%;width:${(e - s) / span * 100}%"></span>`).join("");
-    const all = clipped.map(([s, e]) => `${fmtTime(s)}–${fmtTime(e)}`);
-    const txt = all.length ? all.slice(0, 2).join(", ") + (all.length > 2 ? "…" : "") : "Nothing open";
-    return `<td class="daycell" data-date="${d}" title="${all.join("\n") || "Nothing open"}"><div class="bar">${bars}</div><div class="txt">${txt}</div></td>`;
-  }).join(""));
-  $("grid").innerHTML = list.length ? head + `<tbody>${body}</tbody>` : emptyRow("No fields match these filters this week.");
-  for (const el of $("grid").querySelectorAll("[data-date]")) el.onclick = () => { $("date").value = el.dataset.date; setView("day"); };
-}
-
-// How many days ahead most fields open for online booking (the most common setting).
-function typicalLeadDays() {
-  const counts = {};
-  for (const f of state.facilities) if (f.bookAheadDays) counts[f.bookAheadDays] = (counts[f.bookAheadDays] || 0) + 1;
-  const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return best ? +best[0] : 0;
-}
-
-function render() {
-  if (!state.snap) return;
-  const date = $("date").value;
-  savePrefs();
-  const pad = typicalLeadDays(), firstBookable = addDays(today(), pad);
-  $("note").hidden = !(pad && date < firstBookable);
-  $("note").textContent = `Most fields can only be booked online ${pad} or more days ahead (from ${dayLabel(firstBookable, true)}), so sooner dates will look full. For those, call the city at 650-330-2291.`;
-  if (!state.dates.includes(date)) {
-    $("grid").innerHTML = emptyRow(`No data for ${dayLabel(date, true)}. Pick a date between ${dayLabel(state.dates[0], true)} and ${dayLabel(state.dates.at(-1), true)}.`);
+    cities = await (await fetch("cities.json?t=" + Date.now(), { cache: "no-store" })).json();
+  } catch (e) {
+    $("cities").innerHTML = `<div class="empty">The city list couldn't be loaded. Try reloading the page.</div>`;
     return;
   }
-  $("grid").classList.toggle("week", state.view === "week");
-  if (state.view === "day") renderDay(date); else renderWeek(date);
-}
-
-function setView(v) {
-  state.view = v;
-  $("vDay").classList.toggle("on", v === "day");
-  $("vWeek").classList.toggle("on", v === "week");
-  render();
-}
-
-function applySnapshot(snap) {
-  const firstLoad = !state.snap;
-  state.snap = snap;
-  state.facilities = (snap.facilities || []).slice().sort((a, b) => (a.park + a.name).localeCompare(b.park + b.name));
-  state.avail = {};
-  const dates = new Set();
-  for (const week of Object.values(snap.weeks || {})) {
-    for (const [fid, days] of Object.entries(week)) {
-      if (!days || days.error) continue;
-      Object.assign(state.avail[fid] ||= {}, days);
-      for (const d of Object.keys(days)) dates.add(d);
-    }
+  if (!cities.length) { $("cities").innerHTML = `<div class="empty">No cities yet. Add one below.</div>`; return; }
+  $("cities").innerHTML = cities.map((c) => `
+    <a class="city" href="city.html?c=${encodeURIComponent(c.id)}" id="city-${esc(c.id)}">
+      <span class="badge">${esc(initials(c.name))}</span>
+      <span class="info"><div class="name">${esc(c.name)}${c.state ? ", " + esc(c.state) : ""}</div><div class="sub">Loading…</div></span>
+      <span class="chev">›</span>
+    </a>`).join("");
+  for (const c of cities) {
+    const sub = document.querySelector(`#city-${CSS.escape(c.id)} .sub`);
+    fetch(`data/${encodeURIComponent(c.id)}.json?t=${Date.now()}`, { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (!d) { sub.textContent = "Waiting for the first refresh"; return; }
+        const parks = new Set(d.facilities.map((f) => f.park)).size;
+        sub.textContent = `${d.facilities.length} fields at ${parks} parks · updated ${ago(d.updatedAt)}`;
+      })
+      .catch(() => { sub.textContent = "Open times unavailable right now"; });
   }
-  state.dates = [...dates].sort();
-  $("updated").textContent = snap.updatedAt ? `Updated ${ago(snap.updatedAt)}` : "";
-
-  if (firstLoad) {
-    const p = loadPrefs();
-    const types = [...new Set(state.facilities.map((f) => f.type))].sort();
-    $("type").innerHTML = "";
-    $("type").add(new Option("All types", ""));
-    for (const t of types) $("type").add(new Option(t + "s", t));
-    $("type").value = p.type !== undefined && (p.type === "" || types.includes(p.type)) ? p.type : (types.includes("Athletic Field") ? "Athletic Field" : "");
-    for (const pk of [...new Set(state.facilities.map((f) => f.park))].sort()) $("park").add(new Option(pk, pk));
-    if (p.park) $("park").value = p.park;
-    let start = addDays(today(), typicalLeadDays());
-    if (state.dates.length && (start < state.dates[0] || start > state.dates.at(-1))) start = state.dates[0];
-    $("date").value = start;
-    state.view = p.view === "week" ? "week" : "day";
-    $("vDay").classList.toggle("on", state.view === "day");
-    $("vWeek").classList.toggle("on", state.view === "week");
-  }
-  if (state.dates.length) { $("date").min = state.dates[0]; $("date").max = state.dates.at(-1); }
-  render();
 }
 
-function setupControls() {
-  const p = loadPrefs();
-  for (let m = DAY_START; m <= DAY_END; m += STEP) {
-    $("from").add(new Option(fmtTime(m), m));
-    $("to").add(new Option(fmtTime(m), m));
-  }
-  $("from").value = p.from || 7 * 60;
-  $("to").value = p.to || 22 * 60;
-  if (p.minLen) $("minLen").value = p.minLen;
-  if (p.onlyOpen !== undefined) $("onlyOpen").checked = p.onlyOpen;
-  for (const id of ["type", "park", "from", "to", "minLen", "onlyOpen", "date"]) $(id).onchange = render;
-  const step = (n) => { if (!$("date").value) return; $("date").value = addDays($("date").value, (state.view === "week" ? 7 : 1) * n); render(); };
-  $("prev").onclick = () => step(-1);
-  $("next").onclick = () => step(1);
-  $("vDay").onclick = () => setView("day");
-  $("vWeek").onclick = () => setView("week");
+function checkLink(link) {
+  let u;
+  try { u = new URL(link); } catch (e) { return "That doesn't look like a web link. Copy the whole address from your browser."; }
+  if (!u.hostname.endsWith("perfectmind.com")) return "That link isn't a PerfectMind booking page, so this site can't read it yet.";
+  if (!u.searchParams.get("widgetId") || !u.searchParams.get("calendarId")) return "The link needs the widgetId and calendarId parts. Open the city's field rental list (the page that lists all the fields) and copy that link.";
+  return null;
 }
 
-async function start() {
-  setupControls();
+$("addForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("cName").value.trim(), state = $("cState").value.trim().toUpperCase(), link = $("cLink").value.trim();
+  const err = !name ? "Enter the city's name." : checkLink(link);
+  $("formError").hidden = !err;
+  $("formError").textContent = err || "";
+  if (err) { $("result").hidden = true; return; }
+  const entry = { id: slug(name + (state ? "-" + state : "")), name, state, bookingLink: link };
+  $("snippet").textContent = JSON.stringify(entry, null, 2).replace(/^/gm, "  ");
+  const repo = repoUrl();
+  $("editLink").hidden = !repo;
+  if (repo) $("editLink").href = `${repo}/edit/main/cities.json`;
+  $("result").hidden = false;
+});
+
+$("copyBtn").addEventListener("click", async () => {
   try {
-    const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
-    if (!r.ok) throw new Error(r.status);
-    applySnapshot(await r.json());
+    await navigator.clipboard.writeText($("snippet").textContent);
+    $("copyBtn").textContent = "Copied";
   } catch (e) {
-    $("grid").innerHTML = emptyRow("Open times couldn't be loaded right now. Try reloading the page in a few minutes.");
+    const r = document.createRange(); r.selectNodeContents($("snippet"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    $("copyBtn").textContent = "Selected, now copy";
   }
-}
-start();
+  setTimeout(() => { $("copyBtn").textContent = "Copy code"; }, 2000);
+});
+
+loadCities();
 </script>
 </body>
 </html>
