@@ -79,7 +79,7 @@
     <h2>Add a city</h2>
     <div class="card">
       <form id="addForm" novalidate>
-        <p>Works with cities that book fields through PerfectMind (their booking pages are on a <b>perfectmind.com</b> address). Open the city's field rental list and copy the link from your browser.</p>
+        <p>Works with cities that book fields through PerfectMind or ActiveNet (their booking pages are on a <b>perfectmind.com</b> or <b>activecommunities.com</b> address). Open the city's field rental list and copy the link from your browser.</p>
         <div class="row2">
           <label class="ctl" for="cName">City name <input id="cName" placeholder="Palo Alto" autocomplete="off"></label>
           <label class="ctl" for="cState">State <input id="cState" placeholder="CA" maxlength="2" autocomplete="off"></label>
@@ -161,7 +161,8 @@ async function loadCities() {
 function checkLink(link) {
   let u;
   try { u = new URL(link); } catch (e) { return "That doesn't look like a web link. Copy the whole address from your browser."; }
-  if (!u.hostname.endsWith("perfectmind.com")) return "That link isn't a PerfectMind booking page, so this site can't read it yet.";
+  if (u.hostname.endsWith("activecommunities.com")) return u.pathname.split("/")[1] ? null : "Copy a link from the city's own booking site, so it includes the city's part of the address.";
+  if (!u.hostname.endsWith("perfectmind.com")) return "That link isn't a PerfectMind or ActiveNet booking page, so this site can't read it yet.";
   if (!u.searchParams.get("widgetId") || !u.searchParams.get("calendarId")) return "The link needs the widgetId and calendarId parts. Open the city's field rental list (the page that lists all the fields) and copy that link.";
   return null;
 }

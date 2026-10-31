@@ -5,8 +5,9 @@ Usage:
   python3 scrape.py            # refresh every city, writing data/<id>.json
   python3 scrape.py menlo-park # refresh one city
 
-Each city needs a PerfectMind "BookMe4FacilityList" booking link, like
-https://<something>.perfectmind.com/<org>/Clients/BookMe4FacilityList/List?widgetId=...&calendarId=...
+Each city's bookingLink picks the reader:
+  PerfectMind: https://<something>.perfectmind.com/<org>/Clients/BookMe4FacilityList/List?widgetId=...&calendarId=...
+  ActiveNet:   https://anc.apm.activecommunities.com/<org>/reservation/search
 """
 import json
 import sys
@@ -15,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import activenet
 import server
 
 HERE = Path(__file__).resolve().parent
@@ -37,23 +39,39 @@ def configure(link):
     server.cache.clear()
 
 
+def perfectmind(link):
+    """(facilities, fetch_week(f, start) -> {day: ranges}, workers) for a PerfectMind city."""
+    configure(link)
+    facilities = [f for f in server.fetch_facilities() if f.get("serviceId")]
+
+    def week(f, start):
+        days = server.fetch_week(f, start)["days"]
+        return {d: server.free_ranges(st, int(f["duration"])) for d, st in days.items()}
+
+    return facilities, week, server.WORKERS
+
+
+def active_net(link):
+    site = activenet.Site(link)
+    return site.facilities(), site.week, activenet.WORKERS
+
+
 def snapshot(city):
-    configure(city["bookingLink"])
-    facilities = server.fetch_facilities()
+    reader = active_net if activenet.is_activenet(city["bookingLink"]) else perfectmind
+    facilities, fetch_week, workers = reader(city["bookingLink"])
     today = datetime.now(PACIFIC).date()
     starts = [(today + timedelta(days=7 * i)).isoformat() for i in range(WEEKS)]
-    jobs = [(f, s) for s in starts for f in facilities if f.get("serviceId")]
+    jobs = [(f, s) for s in starts for f in facilities]
 
     def one(job):
         f, s = job
         try:
-            week = server.fetch_week(f, s)["days"]
+            return s, f["id"], fetch_week(f, s)
         except Exception as e:
             return s, f["id"], {"error": str(e)}
-        return s, f["id"], {d: server.free_ranges(st, int(f["duration"])) for d, st in week.items()}
 
     weeks = {s: {} for s in starts}
-    with ThreadPoolExecutor(server.WORKERS) as pool:
+    with ThreadPoolExecutor(workers) as pool:
         for s, fid, days in pool.map(one, jobs):
             weeks[s][fid] = days
 

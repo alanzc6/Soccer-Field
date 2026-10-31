@@ -1,7 +1,7 @@
 # Field Finder
 
 A free website that shows open times at city athletic fields, for any city whose
-field rentals are booked through PerfectMind. GitHub Pages hosts it, and a
+field rentals are booked through PerfectMind or ActiveNet. GitHub Pages hosts it, and a
 GitHub Action refreshes the data every 3 hours.
 
 ## What's in here
@@ -10,7 +10,7 @@ GitHub Action refreshes the data every 3 hours.
 - `city.html`: the field finder for one city (opened from the home page)
 - `cities.json`: the list of cities
 - `data/`: open times for each city (updated automatically)
-- `scrape.py` and `server.py`: the script that reads each city's booking site
+- `scrape.py`, `server.py` (PerfectMind) and `activenet.py` (ActiveNet): the script that reads each city's booking site
 - `.github/workflows/refresh.yml`: runs the script every 3 hours, and whenever `cities.json` changes
 
 ## Adding a city
@@ -30,8 +30,10 @@ A city entry looks like this:
 }
 ```
 
-The booking link must be the city's PerfectMind facility list page, the one that
-lists all the fields, with `widgetId` and `calendarId` in it.
+For PerfectMind, the booking link must be the city's facility list page, the one
+that lists all the fields, with `widgetId` and `calendarId` in it. For ActiveNet,
+any link on the city's `activecommunities.com` site works, for example
+`https://anc.apm.activecommunities.com/sanjoseparksandrec/reservation/search`.
 
 ## Setting up from scratch
 
@@ -45,4 +47,4 @@ lists all the fields, with `widgetId` and `calendarId` in it.
 
 - GitHub pauses scheduled workflows in repositories with no activity for 60 days.
   If the "updated" times stop moving, re-enable the workflow on the Actions tab.
-- Cities that use a different booking system (not PerfectMind) won't work without new code.
+- Cities that use a different booking system (not PerfectMind or ActiveNet) won't work without new code.

@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8765
 BASE = "https://cityofmenlopark.perfectmind.com"
 ORG = "/26116/Clients"
 WIDGET_ID = "9024d6fc-902b-4a85-a0ee-ea558c32ea15"
