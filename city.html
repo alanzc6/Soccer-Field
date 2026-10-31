@@ -328,7 +328,7 @@ function applySnapshot(snap) {
     $("type").value = p.type !== undefined && (p.type === "" || types.includes(p.type)) ? p.type : (types.includes("Athletic Field") ? "Athletic Field" : "");
     for (const pk of [...new Set(state.facilities.map((f) => f.park))].sort()) $("park").add(new Option(pk, pk));
     if (p.park) $("park").value = p.park;
-    let start = addDays(today(), typicalLeadDays());
+    let start = today();
     if (state.dates.length && (start < state.dates[0] || start > state.dates.at(-1))) start = state.dates[0];
     $("date").value = start;
     state.view = p.view === "week" ? "week" : "day";
