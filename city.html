@@ -35,6 +35,7 @@
   .ctl { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--label2); }
   .row { display: flex; gap: 6px; align-items: center; }
   input, select, button { font: 400 15px var(--font); color: var(--label); }
+  select { max-width: 100%; text-overflow: ellipsis; }
   select, input[type="date"] {
     appearance: none; -webkit-appearance: none; border: 0; border-radius: 9px; background-color: var(--fill);
     padding: 7px 30px 7px 11px; min-height: 34px;
@@ -96,6 +97,7 @@
   th.dayhead.sel { color: var(--blue); font-weight: 600; }
   .empty { padding: 44px 20px; text-align: center; color: var(--label2); }
   footer { font-size: 13px; color: var(--label2); padding: 0 4px; }
+  th.dayhead .ds, th.name .ds { display: none; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   @media (max-width: 600px) {
     header h1 { font-size: 30px; }
@@ -111,8 +113,25 @@
     th.dayhead span.ds { display: inline; }
     .week th.name, .week td.name { min-width: 112px; max-width: 120px; }
     .week td.name a { font-size: 13px; }
+    /* Two-column filter grid so the filters don't fill the whole first screen, and nothing can push the page wider than the phone. */
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 12px; }
+    .controls > * { min-width: 0; }
+    .ctl.wide { grid-column: 1 / -1; }
+    .controls select, .controls input[type="date"] { width: 100%; min-width: 0; }
+    .controls .row > select { flex: 1; }
+    .controls .row > input[type="date"] { flex: 1; }
+    .seg { display: flex; }
+    .seg button { flex: 1; padding: 5px 8px; }
+    /* iPhone Safari zooms in on any form field under 16px when tapped, and stays zoomed. */
+    input, select { font-size: 16px; }
+    .icon-btn { width: 38px; height: 38px; flex: none; }
+    .board { max-height: 72dvh; }
+    th.name .dl { display: none; }
+    th.name .ds { display: inline; }
+    thead th.name { font-size: 15px; }
   }
-  th.dayhead .ds { display: none; }
+  td.name .open { display: block; margin-top: 3px; font-size: 12px; color: var(--blue); font-variant-numeric: tabular-nums; line-height: 1.3; }
+  td.name .open.no { color: var(--label2); }
 </style>
 
 </head>
@@ -125,7 +144,7 @@
   </header>
 
   <div class="card controls">
-    <label class="ctl" for="date">Date
+    <label class="ctl wide" for="date">Date
       <span class="row">
         <button class="icon-btn" id="prev" aria-label="Back">‹</button>
         <input type="date" id="date">
@@ -136,8 +155,8 @@
       <span class="seg"><button id="vDay" class="on">Day</button><button id="vWeek">Week</button></span>
     </div>
     <label class="ctl" for="type">Type <select id="type"></select></label>
-    <label class="ctl" for="park">Park <select id="park"><option value="">All parks</option></select></label>
-    <label class="ctl" for="from">Open between
+    <label class="ctl wide" for="park">Park <select id="park"><option value="">All parks</option></select></label>
+    <label class="ctl wide" for="from">Open between
       <span class="row"><select id="from"></select><span>to</span><select id="to"></select></span>
     </label>
     <label class="ctl" for="minLen">For at least
@@ -149,7 +168,7 @@
         <option value="180">3 hours</option>
       </select>
     </label>
-    <label class="ctl toggle" for="onlyOpen"><input type="checkbox" id="onlyOpen" checked role="switch"> Only fields with an opening</label>
+    <label class="ctl toggle wide" for="onlyOpen"><input type="checkbox" id="onlyOpen" checked role="switch"> Only fields with an opening</label>
   </div>
 
   <div class="card note" id="note" hidden></div>
@@ -225,12 +244,12 @@ function visibleFacilities(dates) {
     (!only || dates.some((d) => matches(rangesFor(f, d)))));
 }
 
-function groupRows(list, cols, rowFn) {
+function groupRows(list, cols, rowFn, extraFn) {
   let html = "", park = null;
   for (const f of list) {
     if (f.park !== park) { park = f.park; html += `<tr class="park"><td colspan="${cols + 1}"><span>${esc(park)}</span></td></tr>`; }
     const short = f.name.replace(/^.*?–\s*/, "");
-    html += `<tr class="field"><td class="name"><a href="${esc(f.bookingUrl)}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(short)}</a></td>${rowFn(f)}</tr>`;
+    html += `<tr class="field"><td class="name"><a href="${esc(f.bookingUrl)}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(short)}</a>${extraFn ? extraFn(f) : ""}</td>${rowFn(f)}</tr>`;
   }
   return html;
 }
@@ -241,7 +260,7 @@ function renderDay(date) {
   const list = visibleFacilities([date]);
   const ticks = [];
   for (let m = DAY_START; m < DAY_END; m += STEP) ticks.push(m);
-  const head = `<thead><tr><th class="name">${dayLabel(date, true)}</th>` +
+  const head = `<thead><tr><th class="name"><span class="dl">${dayLabel(date, true)}</span><span class="ds">${dayLabel(date)}</span></th>` +
     ticks.map((m) => m % 60 ? `<th></th>` : `<th class="tick">${fmtTime(m)}</th>`).join("") + `</tr></thead>`;
   const body = groupRows(list, ticks.length, (f) => {
     const r = rangesFor(f, date);
@@ -251,8 +270,21 @@ function renderDay(date) {
       const free = r.some(([s, e]) => s <= m && m + STEP <= e);
       return `<td class="${cls} ${free ? "free" : "busy"}" title="${fmtTime(m)}–${fmtTime(m + STEP)}: ${free ? "open" : "booked or closed"}"></td>`;
     }).join("");
+  }, (f) => {
+    // Spell out the open times, since phones can't hover to see them.
+    const r = rangesFor(f, date);
+    if (!r) return `<span class="open no">Not bookable online</span>`;
+    const from = +$("from").value, to = +$("to").value;
+    const open = r.map(([s, e]) => [Math.max(s, from), Math.min(e, to)]).filter(([s, e]) => e > s);
+    return open.length
+      ? `<span class="open">Open ${open.map(([s, e]) => `${fmtTime(s)}–${fmtTime(e)}`).join(", ")}</span>`
+      : `<span class="open no">Nothing open</span>`;
   });
   $("grid").innerHTML = list.length ? head + `<tbody>${body}</tbody>` : emptyRow(`No fields match these filters on ${dayLabel(date, true)}. Try a wider time range or a shorter length.`);
+  // Start the timeline at the "Open between" time instead of 6am, so a phone shows the hours that matter.
+  const board = $("grid").parentElement, tick = $("grid").querySelectorAll("thead th")[1 + Math.max(0, (+$("from").value - DAY_START) / STEP)];
+  const nameW = $("grid").querySelector("thead th.name")?.offsetWidth || 0;
+  board.scrollLeft = tick ? Math.max(0, tick.offsetLeft - nameW - 14) : 0;
 }
 
 function renderWeek(date) {
